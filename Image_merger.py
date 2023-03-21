@@ -27,41 +27,87 @@ def del_file():
 # 저장 경로
 def browse_dest_path():
     folder_selected = filedialog.askdirectory()
-    if folder_selected is None:
+    if folder_selected == "":
         return
     # print(folder_selected)
     txt_dest_path.delete(0,END)
     txt_dest_path.insert(0,folder_selected)
 
 def merge_image():
-    # print(list_file.get(0,END))
-    images = [Image.open(x) for x in list_file.get(0,END)]
-    # size -> size[0] : width, size[1] : height
-    widths = [x.size[0] for x in images]
-    heights = [x.size[1] for x in images]
+    try:
+        # 가로 넓이
+        img_width = cmb_width.get()
+        if img_width == "원본유지":
+            img_width = -1
+        else:
+            img_width = int(img_width)
 
-    # 최대 넓이와 전체 높이 구하기
-    max_width, total_height = max(widths), sum(heights)
+        #간격
+        img_space = cmb_space.get()
+        if img_space == "좁게":
+            img_space = 30
+        elif img_space == "보통":
+            img_space = 60
+        elif img_space == "넓게":
+            img_space = 90
+        else:
+            img_space = 0
+        
+        # 포맷
+        img_format = cmb_format.get().lower() #PNG, JPG, BMP 값을 받아와서 소문자로 변경
 
-    # 스케치 북 준비
-    result_img = Image.new("RGB",(max_width,total_height),(255,255,255)) # 배경 색
-    y_offset = 0 # y 위치
-    # for img in images:
-    #     result_img.paste(img,(0,y_offset))
-    #     y_offset += img.size[1]
+        images = [Image.open(x) for x in list_file.get(0,END)]
 
-    for idx, img in enumerate(images):
-        result_img.paste(img,(0,y_offset))
-        y_offset += img.size[1]
+        image_sizes = []
 
-        progress = (idx + 1) / len(images) * 100
-        p_var.set(progress)
-        progress_bar.update()
-    dest_path = os.path.join(txt_dest_path.get(), "merged_photo.jpg")
-    result_img.save(dest_path)
-    msgbox.showinfo("알림","작업이 완료되었습니다.")
-    # print("width : ",widths)
-    # print("height : ",heights)
+        if img_width > -1:
+            image_sizes = [(int(img_width),int(img_width*x.size[1]/x.size[0])) for x in images]
+        else:
+            image_sizes = [(x.size[0],x.size[1]) for x in images]
+
+
+        # print(list_file.get(0,END))
+        images = [Image.open(x) for x in list_file.get(0,END)]
+        # size -> size[0] : width, size[1] : height
+
+
+        # widths = [x.size[0] for x in images]
+        # heights = [x.size[1] for x in images]
+        # UNZIP
+        widths, heights = zip(*(image_sizes))
+
+        # 최대 넓이와 전체 높이 구하기
+        max_width, total_height = max(widths), sum(heights)
+
+        # 스케치 북 준비
+        if img_space > 0:
+            total_height += (img_space * (len(images) - 1))
+
+        result_img = Image.new("RGB",(max_width,total_height),(255,255,255)) # 배경 색
+        y_offset = 0 # y 위치
+        # for img in images:
+        #     result_img.paste(img,(0,y_offset))
+        #     y_offset += img.size[1]
+
+        for idx, img in enumerate(images):
+            if img_width > -1:
+                img = img.resize(image_sizes[idx])
+
+            result_img.paste(img,(0,y_offset))
+            y_offset += (img.size[1]+img_space)
+
+            progress = (idx + 1) / len(images) * 100
+            p_var.set(progress)
+            progress_bar.update()
+
+        file_name = "merged_photo."+img_format
+        dest_path = os.path.join(txt_dest_path.get(), file_name)
+        result_img.save(dest_path)
+        msgbox.showinfo("알림","작업이 완료되었습니다.")
+        # print("width : ",widths)
+        # print("height : ",heights)
+    except Exception as err:
+        msgbox.showerror("에러",err)
 #시작
 def start():
     print("가로 넓이 :",cmb_width.get())
